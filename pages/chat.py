@@ -55,7 +55,7 @@ def response_generator_fixed():
 #     return model.stream(input_text)
 
 def response_generator_ollama(input_text):
-    llm = ChatOllama(model="llama3")
+    llm = ChatOllama(model="llama3.2")
     
     return llm.astream(input_text)
       

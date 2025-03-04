@@ -1,67 +1,43 @@
 import streamlit as st
-# from langchain.llms import Ollama
-# from langchain.agents import AgentType, initialize_agent, load_tools, AgentExecutor, create_react_agent
-# from langchain.callbacks import StreamlitCallbackHandler
-# from langchain.callbacks.manager import CallbackManager
-# from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-# from langchain_core.prompts.prompt import PromptTemplate
-# from langchain.tools import tool
 
-# from langchain_core.prompts import ChatPromptTemplate
+from typing import Annotated
+from typing_extensions import TypedDict
+
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
 from langchain_ollama import ChatOllama
-# from langchain_core.messages import AIMessage
-
-import random
-import time
-
-
 st.session_state.TestConfigs = st.session_state.TestConfigs
 
 
+class State(TypedDict):
+    # Messages have the type "list". The `add_messages` function
+    # in the annotation defines how this state key should be updated
+    # (in this case, it appends messages to the list, rather than overwriting them)
+    messages: Annotated[list, add_messages]
 
-# template = """
-# Question: {question}
+graph_builder= StateGraph(State)
 
-# Answer: Let's think step by step.
-# """
+llm = ChatOllama(model="llama3.2")
 
-# prompt = ChatPromptTemplate.from_template(template)
+def chatbot(state: State):
+    return { "messages": [llm.invoke(state["messages"])] }
 
-# model = OllamaLLM(model="llama3.1")
+# The first argument is the unique node name
+# The second argument is the function or object that will be called whenever
+# the node is used.
+graph_builder.add_node("chatbot", chatbot)
+graph_builder.add_edge(START, "chatbot")
+graph_builder.add_edge("chatbot", END)
+graph = graph_builder.compile()
 
+def stream_graph_updates(user_input: str):
+    for msg, metadata in graph.stream({"messages": [{"role": "user", "content": user_input}]}, stream_mode="messages"):
+        if msg.content:
+            yield msg.content
+           
 
-
-
-
-# chain = prompt | model
-
-def response_generator_fixed():
-    response = random.choice([
-        "Hello there! How can I assist you today?",
-        "Hi, human! Is there anything I can help you with?",
-        "Do you need help?",
-    ])
-
-    for word in response.split():
-        yield word + " "
-        time.sleep(0.05)
-
-# def response_generator_ollama(input_text):
-#     model = Ollama(
-#         model="llama2-uncensored:latest",
-#         callback_manager=CallbackManager([StreamingStdOutCallbackHandler()])
-#     )
-
-#     return model.stream(input_text)
-
-def response_generator_ollama(input_text):
-    llm = ChatOllama(model="llama3.2")
     
-    return llm.astream(input_text)
-      
-      
-
-st.title("Simple Chat")
+st.title("StreamChat")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -78,7 +54,7 @@ if prompt := st.chat_input("What is up?"):
 
  
     with st.chat_message("assistant"):
-        response = st.write_stream(response_generator_ollama(prompt))
+        response = st.write_stream(stream_graph_updates(prompt))
     st.session_state.messages.append({ "role": "assistant", "content": response })
 
 

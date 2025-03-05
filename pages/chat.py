@@ -3,9 +3,14 @@ import streamlit as st
 from typing import Annotated
 from typing_extensions import TypedDict
 
+from langchain_ollama import ChatOllama
+from langchain_community.tools.tavily_search import TavilySearchResults
+
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
-from langchain_ollama import ChatOllama
+
+from basictoolnode import BasicToolNode
+
 st.session_state.TestConfigs = st.session_state.TestConfigs
 
 
@@ -16,8 +21,9 @@ class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 graph_builder= StateGraph(State)
-
-llm = ChatOllama(model="llama3.2")
+tool = TavilySearchResults(max_results=2)
+tools = [tool]
+llm = ChatOllama(model="llama3.2").bind_tools(tools)
 
 def chatbot(state: State):
     return { "messages": [llm.invoke(state["messages"])] }
@@ -29,6 +35,8 @@ graph_builder.add_node("chatbot", chatbot)
 graph_builder.add_edge(START, "chatbot")
 graph_builder.add_edge("chatbot", END)
 graph = graph_builder.compile()
+
+tool_node = BasicToolNode(tools=[tool])
 
 def stream_graph_updates(user_input: str):
     for msg, metadata in graph.stream({"messages": [{"role": "user", "content": user_input}]}, stream_mode="messages"):

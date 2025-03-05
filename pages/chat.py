@@ -23,9 +23,10 @@ class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 graph_builder= StateGraph(State)
-tool = TavilySearchResults(max_results=2)
-tools = [tool]
-llm = ChatOllama(model="llama3.2").bind_tools(tools)
+# tool = TavilySearchResults(max_results=2)
+# tools = [tool]
+# llm = ChatOllama(model="llama3.2").bind_tools(tools)
+llm = ChatOllama(model="llama3.2")
 
 def chatbot(state: State):
     return { "messages": [llm.invoke(state["messages"])] }
@@ -58,9 +59,9 @@ def route_tools(state: State):
 graph_builder.add_node("chatbot", chatbot)
 
 # tool_node = BasicToolNode(tools=[tool])
-tool_node = ToolNode(tools=[tool])
+# tool_node = ToolNode(tools=[tool])
 
-graph_builder.add_node("tools", tool_node)
+# graph_builder.add_node("tools", tool_node)
 # The `tools_condition` function returns "tools" if the chatbot asks to use a tool, and "END" if
 # it is fine directly responding. This conditional routing defines the main agent loop.
 # graph_builder.add_conditional_edges(
@@ -74,13 +75,13 @@ graph_builder.add_node("tools", tool_node)
 #     {"tools": "tools", END: END},
 # )
 
-graph_builder.add_conditional_edges(
-    "chatbot",
-    tools_condition,
-)
+# graph_builder.add_conditional_edges(
+#     "chatbot",
+#     tools_condition,
+# )
 
 # Any time a tool is called, we return to the chatbot to decide the next step
-graph_builder.add_edge("tools", "chatbot")
+# graph_builder.add_edge("tools", "chatbot")
 graph_builder.set_entry_point("chatbot")
 graph = graph_builder.compile()
 
